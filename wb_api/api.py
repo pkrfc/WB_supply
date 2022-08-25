@@ -10,8 +10,7 @@ class WBSupplyAPI:
     USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                   'AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/102.0.0.0 Safari/537.36')
-    COOKIE = ('WBToken=Ao7kmw7Sh6awDNLDj7EMQocqnTTRB9an4r8wLBiMxEuS7QFNdudJVtKSIEmxc58aBvDDgJv-yjmYORjxRya-7icqd7i4FkXbaSH9faKUTxPD0A; '
-              'x-supplier-id=0dc35e11-0fa2-554b-8c29-69384d4ac4a0;')
+    COOKIE = ('*')
     HEADERS = {
         'User-Agent': USER_AGENT,
         'Cookie': COOKIE
