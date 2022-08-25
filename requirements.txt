@@ -1,0 +1,5 @@
+fastapi
+aiohttp
+aiosqlite
+asgi-ratelimit
+uvicorn
