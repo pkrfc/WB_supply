@@ -1,11 +1,13 @@
 FROM python:3.10
 
-COPY ./requirements.txt ./wb_limit/requirements.txt
+WORKDIR /backend
 
-RUN pip install -r ./wb_limit/requirements.txt
+COPY requirements.txt .
 
-EXPOSE 8000
+RUN pip3 install -r requirements.txt --no-cache-dir
 
-COPY ./ ./wb_limit/
+EXPOSE 8804
 
-CMD ["uvicorn", "wb_limit.app:server", "--host", "0.0.0.0", "--port", "8000"]
+COPY . ./
+
+CMD ["uvicorn", "app:server", "--host", "0.0.0.0", "--port", "8804"]
