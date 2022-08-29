@@ -62,12 +62,10 @@ class WBSupplyAPI:
             "id": "json-rpc_42",
             "params": params
         }
-        test = data
         async with aiohttp.ClientSession(headers=heads) as _session:
             async with _session.post(url, ssl=False, json=data) as response:
                 error_id = token_hex(8)
                 if response.ok:
-                    test = await response.json()
                     return await response.json()
                 elif response.status == HTTPStatus.UNAUTHORIZED:
                     error_id = token_hex(8)
