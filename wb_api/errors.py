@@ -19,12 +19,10 @@ class UnauthorizedError(ValueError):
 
 
 class RPSError(BaseException):
-    def __init__(self, secs: int, error_id: str, *args: object) -> None:
+    def __init__(self, error_id: str, *args: object) -> None:
         """Превышено количество запросов.
         Args:
-            secs (int): Retry-After seconds.
             error_id (str): Error ID.
         """
         super().__init__(*args)
-        self.secs = round(secs / 1000) + 1
         self.error_id = error_id

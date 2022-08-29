@@ -41,7 +41,7 @@ class WBSupplyAPI:
                 elif response.status == HTTPStatus.UNAUTHORIZED:
                     raise UnauthorizedError(error_id, 'Ошибка авторизации.')
                 elif response.status == HTTPStatus.TOO_MANY_REQUESTS:
-                    raise RPSError(error_id=error_id, secs=60)
+                    raise RPSError(error_id=error_id)
 
                 else:
                     raise UnexpectedError(
@@ -49,20 +49,32 @@ class WBSupplyAPI:
                         'Неожиданная ошибка. Свяжитесь с разработчиком.')
 
     @classmethod
-    async def add_supplies(cls, supply, date, token, supplier_id):
+    async def add_supplies(cls, request):
         url = cls.SUPPLIES_ADD
         heads = cls.HEADERS.copy()
-        heads['Cookie'] = heads['Cookie'].format(token, supplier_id)
+        heads['Cookie'] = heads['Cookie'].format(request.token, request.supplier_id)
+        if request.monopalletCount is not None:
+            params = {"preOrderId": request.preOrderId, "deliveryDate": request.deliveryDate.isoformat(), "monopalletCount": request.monopalletCount}
+        else:
+            params = {"preOrderId": request.preOrderId, "deliveryDate": request.deliveryDate.isoformat()}
         data = {
             "jsonrpc": "2.0",
             "id": "json-rpc_42",
-            "params": {"preOrderId": supply, "deliveryDate": date.isoformat()}
+            "params": params
         }
+        test = data
         async with aiohttp.ClientSession(headers=heads) as _session:
             async with _session.post(url, ssl=False, json=data) as response:
+                error_id = token_hex(8)
                 if response.ok:
-                    resp_json_error = (
-                        await response.json()
-                    ).get('error').get('message')
-                    if resp_json_error:
-                        return resp_json_error
+                    test = await response.json()
+                    return await response.json()
+                elif response.status == HTTPStatus.UNAUTHORIZED:
+                    error_id = token_hex(8)
+                    raise UnauthorizedError(error_id, 'Ошибка авторизации.')
+                elif response.status == HTTPStatus.TOO_MANY_REQUESTS:
+                    raise RPSError(error_id=error_id)
+                else:
+                    raise UnexpectedError(
+                        error_id,
+                        'Неожиданная ошибка. Свяжитесь с разработчиком.')

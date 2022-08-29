@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-
+from typing import Optional
 
 class WBSPreordersPost(BaseModel):
     token: str
@@ -22,3 +22,35 @@ class WBSupplyAdd(BaseModel):
     supplier_id: str
     preOrderId: int
     deliveryDate: datetime
+    monopalletCount: Optional[int]
+
+
+class DataError(BaseModel):
+    trKey: str
+    msg: str
+    cause: str
+
+
+class ErrorForSupply(BaseModel):
+    code: int
+    message: str
+    data: DataError
+
+
+class IdForSupply(BaseModel):
+    supplyId: int
+    boxTypeId: int
+    preorders: list
+
+
+class SupplyBase(BaseModel):
+    id: str
+    jsonrpc: str
+
+
+class SupplyError(SupplyBase):
+    error: ErrorForSupply
+
+
+class SupplyId(SupplyBase):
+    result: IdForSupply
