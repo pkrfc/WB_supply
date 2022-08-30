@@ -1,20 +1,30 @@
-from fastapi import FastAPI, status
+import asyncio
+import logging
 from typing import Union
 
+from fastapi import FastAPI, status
 from starlette.responses import Response
 
+import config
 from wb_api.api import WBSupplyAPI
-from wb_api.errors import UnauthorizedError, UnexpectedError, RPSError
-from wb_api.schemas import WBSPreorders, WBSPreordersPost, WBSupplyAdd, SupplyError, SupplyId
+from wb_api.errors import RPSError, UnauthorizedError, UnexpectedError
+from wb_api.schemas import (SupplyError, SupplyId, WBSPreorders,
+                            WBSPreordersPost, WBSupplyAdd)
 
 server = FastAPI(
-    debug=True,
-    title='WBSPreorders',
+    debug=config.DEBUG,
+    title='WBS_Supply',
     description='''Сервис поставок''',
-    version='0.5.4'
+    version=config.VERSION
 )
 
 wbs = WBSupplyAPI()
+
+log = logging.getLogger('SupplysAPP')
+
+MAX_VALUE_COUNTER = 1000
+
+SLEEP_STEP = 5
 
 
 @server.post(
@@ -24,11 +34,9 @@ wbs = WBSupplyAPI()
             'model': list[WBSPreorders]
         },
         status.HTTP_429_TOO_MANY_REQUESTS: {
-            'description': 'Превышено колличество запросов,'
+            'description': 'Превышено количество запросов,'
                            ' попробуйте повторить запрос'
-                           ' через 1 минуту.\n\n`retry_after` '
-                           '- Колличество секунд которое необходимо'
-                           ' подождать перед следующим запросом.'
+                           ' через 1 минуту.'
         },
         status.HTTP_401_UNAUTHORIZED: {
             'description': 'Ошибка авторизации. '
@@ -43,13 +51,18 @@ wbs = WBSupplyAPI()
     },
 )
 async def get_preorders(request: WBSPreordersPost):
-    token = request.token
-    supplier_id = request.supplier_id
     try:
-        return await wbs.get_supplies(token, supplier_id)
+        log.debug(f'Called with args: ({request})')
+        return await wbs.get_supplies(request)
     except UnauthorizedError:
+        log.error(
+            'Cant authorize seller by provided WBToken and supplier_id!'
+        )
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     except UnexpectedError:
+        log.error(
+            "Can't view supplies"
+        )
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except RPSError:
         return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
@@ -74,22 +87,59 @@ async def get_preorders(request: WBSPreordersPost):
                            'свяжитесь с разработчиком.'
         },
         status.HTTP_429_TOO_MANY_REQUESTS: {
-            'description': 'Превышено колличество запросов,'
+            'description': 'Превышено количество запросов,'
                            ' попробуйте повторить запрос'
-                           ' через 1 минуту.\n\n`retry_after` '
-                           '- Колличество секунд которое необходимо'
-                           ' подождать перед следующим запросом.'
+                           ' через 1 минуту.'
         }
     },
 )
 async def add_preorders(request: WBSupplyAdd):
     try:
+        log.debug(f'Called with args: ({request})')
         return await wbs.add_supplies(request)
     except UnauthorizedError:
+        log.error(
+            "Can't authorize seller by provided WBToken and supplier_id!"
+        )
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     except UnexpectedError:
+        log.error(
+            "Can't add supply"
+        )
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except RPSError:
         return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
 
+
+@server.post(
+    '/wbs/supply_add_unlimited',
+    name='Запланировать поставку',
+    tags=['WBSupply_add'],
+    responses={
+        status.HTTP_200_OK: {
+            'model': Union[SupplyId, SupplyError]
+        }})
+async def add_preorders_no_limit(request: WBSupplyAdd):
+    counter = 0
+    answer = None
+    while counter < MAX_VALUE_COUNTER:
+        try:
+            answer = await wbs.add_supplies(request)
+            if answer.get('result'):
+                break
+            counter += 1
+            await asyncio.sleep(SLEEP_STEP)
+        except UnauthorizedError:
+            log.error(
+                "Can't authorize seller by provided WBToken and supplier_id!"
+            )
+            return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+        except UnexpectedError:
+            log.error(
+                "Can't add supply"
+            )
+            return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except RPSError:
+            return Response(status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+    return answer
 
